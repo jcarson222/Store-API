@@ -2,13 +2,13 @@ const Product = require("../models/product");
 
 // getAllProductsStatic (HARD CODED)======================================================
 const getAllProductsStatic = async (req, res) => {
-  const products = await Product.find({}).sort("-name price");
+  const products = await Product.find({}).select("name price");
   res.status(200).json({ products, nbHits: products.length });
 };
 
 // getAllProducts (DYNAMIC)=================================================================
 const getAllProducts = async (req, res) => {
-  const { featured, company, name, sort } = req.query;
+  const { featured, company, name, sort, fields } = req.query;
   // ^^^ the key(s) that we're specifically looking for in the req.query
 
   const queryObject = {};
@@ -34,12 +34,20 @@ const getAllProducts = async (req, res) => {
 
   let result = Product.find(queryObject);
 
+  // SORT
   if (sort) {
     const sortList = sort.split(",").join(" ");
-    console.log(sortList);
+    //console.log(sortList);
     result = result.sort(sortList);
   } else {
     result = result.sort("createdAt");
+  }
+
+  //FIELDS
+  if (fields) {
+    const fieldList = fields.split(",").join(" ");
+    //console.log(fieldList);
+    result = result.select(fieldList);
   }
 
   const products = await result;
