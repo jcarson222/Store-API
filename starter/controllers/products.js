@@ -2,7 +2,7 @@ const Product = require("../models/product");
 
 // getAllProductsStatic (HARD CODED)======================================================
 const getAllProductsStatic = async (req, res) => {
-  const products = await Product.find({}).select("name price");
+  const products = await Product.find({}).select("name price").limit(3).skip(2);
   res.status(200).json({ products, nbHits: products.length });
 };
 
@@ -35,6 +35,7 @@ const getAllProducts = async (req, res) => {
   let result = Product.find(queryObject);
 
   // SORT
+  // ^^^ Sets the sort order
   if (sort) {
     const sortList = sort.split(",").join(" ");
     //console.log(sortList);
@@ -43,12 +44,21 @@ const getAllProducts = async (req, res) => {
     result = result.sort("createdAt");
   }
 
-  //FIELDS
+  // SELECT FIELDS
+  // ^^^ Specifies which document fields to include or exclude
   if (fields) {
     const fieldList = fields.split(",").join(" ");
     //console.log(fieldList);
     result = result.select(fieldList);
   }
+
+  // LIMIT/SKIP
+  // ^^^ limit: Specifies the maximum number of documents the query will return.
+  // ^^^ skip: Specifies the number of documents to skip.
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+  result = result.skip(skip).limit(limit);
 
   const products = await result;
 
