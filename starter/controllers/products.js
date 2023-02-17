@@ -2,13 +2,15 @@ const Product = require("../models/product");
 
 // getAllProductsStatic (HARD CODED)======================================================
 const getAllProductsStatic = async (req, res) => {
-  const products = await Product.find({}).select("name price").limit(3).skip(2);
+  const products = await Product.find({ price: { $gt: 30 } })
+    .select("name price")
+    .sort("price");
   res.status(200).json({ products, nbHits: products.length });
 };
 
 // getAllProducts (DYNAMIC)=================================================================
 const getAllProducts = async (req, res) => {
-  const { featured, company, name, sort, fields } = req.query;
+  const { featured, company, name, sort, fields, numericFilters } = req.query;
   // ^^^ the key(s) that we're specifically looking for in the req.query
 
   const queryObject = {};
@@ -30,8 +32,35 @@ const getAllProducts = async (req, res) => {
   // $options: "i" = case insensitive
   // reference mongoDB query operators for more info.
 
-  console.log(queryObject);
+  if (numericFilters) {
+    const operatorMap = {
+      ">": "$gt",
+      ">=": "$gte",
+      "=": "$eq",
+      "<": "$lt",
+      "<=": "$lte",
+    };
+    // ^^^ user friendly operators translated to what mongoose will understand.
 
+    const regEx = /\b(<|>|>=|=|<|<=)\b/g;
+
+    let filters = numericFilters.replace(
+      regEx, // pattern
+      (match) => `-${operatorMap[match]}-` // replacement
+    );
+    // ^^^ ***.replace(pattern, replacement)***
+
+    const options = ["price", "rating"];
+    filters = filters.split(",").forEach((item) => {
+      const [field, operator, value] = item.split("-");
+      if (options.includes(field)) {
+        queryObject[field] = { [operator]: Number(value) };
+      }
+    });
+    console.log(filters);
+  }
+
+  console.log(queryObject);
   let result = Product.find(queryObject);
 
   // SORT
@@ -52,7 +81,7 @@ const getAllProducts = async (req, res) => {
     result = result.select(fieldList);
   }
 
-  // LIMIT/SKIP
+  // LIMIT/SKIP (pagination)
   // ^^^ limit: Specifies the maximum number of documents the query will return.
   // ^^^ skip: Specifies the number of documents to skip.
   const page = Number(req.query.page) || 1;
